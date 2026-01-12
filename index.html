@@ -85,11 +85,15 @@ async function play(ch){
 
   shakaP=new shaka.Player(video);
 
-  if(ch.drmType==="widevine" && ch.licenseUrl){
-    shakaP.configure({
-      drm:{servers:{"com.widevine.alpha":ch.licenseUrl}}
-    });
+function play(ch){
+  if(ch.source === "gsat"){
+    // 🔥 SEND TO ANDROID
+    Android.playGSAT(JSON.stringify(ch));
+    return;
   }
+
+  // existing HLS / clearkey logic stays
+} 
 
   if(ch.drmType==="clearkey" && ch.keyId && ch.key){
     shakaP.configure({
@@ -135,3 +139,4 @@ loadConfig();
 
 </body>
 </html>
+
