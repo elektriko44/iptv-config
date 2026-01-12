@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>IPTV Player</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/shaka-player.compiled.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+
+<style>
+body{margin:0;background:black;font-family:Arial}
+video{position:fixed;inset:0;width:100%;height:100%}
+#ui{position:fixed;bottom:0;width:100%;background:rgba(0,0,0,.75);padding:10px}
+#tabs{display:flex;gap:10px;margin-bottom:8px}
+.tab{padding:6px 14px;border-radius:10px;background:#333;color:#aaa;cursor:pointer}
+.tab.active{background:#0f9;color:black;font-weight:bold}
+#channels{display:flex;gap:12px;overflow-x:auto}
+.channel{min-width:220px;background:#111;padding:10px;border-radius:12px;cursor:pointer;display:flex;align-items:center}
+.channel img{width:48px;height:48px;margin-right:12px}
+.channel span{color:white;font-size:15px}
+</style>
+</head>
+
+<body>
+
+<video id="video" controls autoplay></video>
+
+<div id="ui">
+  <div id="tabs">
+    <div class="tab active" data-cat="Mixed">Mixed</div>
+    <div class="tab" data-cat="HLS">HLS</div>
+    <div class="tab" data-cat="Radio">Radio</div>
+  </div>
+  <div id="channels"></div>
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+const CONFIG_URL =
+"https://elektriko44.github.io/iptv-config/cfg_7x9aQ_2026.json";
+
+let channels = [];
+let currentCat = "Mixed";
+
+const video = document.getElementById("video");
+let shakaP=null, hlsP=null;
+
+/* ================= LOAD CONFIG ================= */
+async function loadConfig(){
+  try{
+    const res = await fetch(CONFIG_URL,{cache:"no-store"});
+    const cfg = await res.json();
+
+    channels = (cfg.channels || []).map(c=>({
+      category: c.category || "Mixed", // 🔥 AUTO FIX
+      ...c
+    }));
+
+    console.log("Loaded channels:", channels.length);
+    render();
+
+  }catch(e){
+    alert("CONFIG LOAD FAILED");
+    console.error(e);
+  }
+}
+
+/* ================= PLAYER ================= */
+async function play(ch){
+  if(shakaP){await shakaP.destroy();shakaP=null}
+  if(hlsP){hlsP.destroy();hlsP=null}
+
+  if(ch.url.includes(".m3u8")){
+    if(Hls.isSupported()){
+      hlsP=new Hls();
+      hlsP.loadSource(ch.url);
+      hlsP.attachMedia(video);
+      hlsP.on(Hls.Events.MANIFEST_PARSED,()=>video.play());
+    }else{
+      video.src=ch.url;video.play();
+    }
+    return;
+  }
+
+  shakaP=new shaka.Player(video);
+
+  if(ch.drmType==="widevine" && ch.licenseUrl){
+    shakaP.configure({
+      drm:{servers:{"com.widevine.alpha":ch.licenseUrl}}
+    });
+  }
+
+  if(ch.drmType==="clearkey" && ch.keyId && ch.key){
+    shakaP.configure({
+      drm:{clearKeys:{[ch.keyId]:ch.key}}
+    });
+  }
+
+  await shakaP.load(ch.url);
+  video.play();
+}
+
+/* ================= RENDER ================= */
+const box=document.getElementById("channels");
+function render(){
+  box.innerHTML="";
+  channels
+    .filter(c=>c.category===currentCat)
+    .forEach(ch=>{
+      const d=document.createElement("div");
+      d.className="channel";
+      d.innerHTML=`
+        <img src="${ch.logo||''}">
+        <span>${ch.name}</span>
+      `;
+      d.onclick=()=>play(ch);
+      box.appendChild(d);
+    });
+}
+
+/* ================= TABS ================= */
+document.querySelectorAll(".tab").forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    currentCat=t.dataset.cat;
+    render();
+  };
+});
+
+/* ================= START ================= */
+loadConfig();
+</script>
+
+</body>
+</html>
