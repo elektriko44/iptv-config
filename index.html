@@ -2,25 +2,22 @@
 <html>
 <head>
 <meta charset="UTF-8"/>
-<title>IPTV Final Test</title>
+<title>IPTV REAL FIX</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.9/shaka-player.compiled.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body style="margin:0;background:#000;color:#fff;font-family:Arial">
 
 <div style="display:flex;height:100vh">
-  <div id="list" style="width:320px;background:#111;overflow:auto;padding:10px"></div>
+  <div id="list" style="width:250px;background:#111;padding:10px"></div>
   <div id="player" style="flex:1;display:flex;align-items:center;justify-content:center"></div>
 </div>
 
 <script>
-// 🔥 CRITICAL LINES NA NASA APP.JS MO
 shaka.polyfill.installAll();
-shaka.net.NetworkingEngine.registerScheme('https', shaka.net.HttpFetchPlugin);
 
 const IPTV_TOKENS = {
-  converge: "PASTE_TOKEN"
+  converge: "PASTE_REAL_TOKEN"
 };
 
 function withToken(u,k){
@@ -45,11 +42,6 @@ const channels=[
   drm:true,
   keyId:"f703e4c8ec9041eeb5028ab4248fa094",
   key:"c22f2162e176eee6273a5d0b68d19530"
-},
-{
-  name:"Yes FM",
-  url:"https://yesfmdagupan.radioca.st/",
-  type:"mp3"
 }
 ];
 
@@ -67,29 +59,22 @@ async function play(c){
   const box=document.getElementById('player');
   box.innerHTML="";
 
-  if(c.type==="mp3"){
-    const a=document.createElement('audio');
-    a.controls=true;
-    a.src=c.url;
-    box.appendChild(a);
-    a.play();
-    return;
-  }
+  const video=document.createElement('video');
+  video.controls=true;
+  video.autoplay=true;
+  box.appendChild(video);
 
-  const v=document.createElement('video');
-  v.controls=true;
-  v.autoplay=true;
-  box.appendChild(v);
-
-  const p=new shaka.Player(v);
+  // 🔥 CRITICAL PART
+  const player = new shaka.Player();
+  await player.attach(video);
 
   if(c.drm){
-    p.configure({
+    player.configure({
       drm:{clearKeys:{[hexToB64(c.keyId)]:hexToB64(c.key)}}
     });
   }
 
-  await p.load(c.url);
+  await player.load(c.url);
 }
 </script>
 
