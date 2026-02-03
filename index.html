@@ -2,142 +2,94 @@
 <html>
 <head>
 <meta charset="UTF-8"/>
-<title>IPTV Quick Test</title>
+<title>IPTV Final Test</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.9/shaka-player.compiled.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
-<style>
-body{margin:0;background:#111;color:#fff;font-family:Arial}
-#app{display:flex;height:100vh}
-#channels{width:320px;background:#1a1a1a;overflow:auto;padding:10px}
-.ch{display:flex;gap:10px;align-items:center;padding:8px;background:#222;margin-bottom:6px;border-radius:6px;cursor:pointer}
-.ch:hover{background:#333}
-.ch img{width:55px;height:55px;border-radius:6px;object-fit:cover}
-#player{flex:1;display:flex;justify-content:center;align-items:center;background:#000}
-video,audio{width:92%;max-height:92%}
-</style>
 </head>
-<body>
+<body style="margin:0;background:#000;color:#fff;font-family:Arial">
 
-<div id="app">
-  <div id="channels"></div>
-  <div id="player"></div>
+<div style="display:flex;height:100vh">
+  <div id="list" style="width:320px;background:#111;overflow:auto;padding:10px"></div>
+  <div id="player" style="flex:1;display:flex;align-items:center;justify-content:center"></div>
 </div>
 
 <script>
-// ===== TOKENS =====
+// 🔥 CRITICAL LINES NA NASA APP.JS MO
+shaka.polyfill.installAll();
+shaka.net.NetworkingEngine.registerScheme('https', shaka.net.HttpFetchPlugin);
+
 const IPTV_TOKENS = {
-  converge: "PASTE_TOKEN_MO_DITO"
+  converge: "PASTE_TOKEN"
 };
 
-// ===== HELPERS (galing sa working app.js) =====
-function withToken(baseUrl, tokenKey){
-  const t = IPTV_TOKENS[tokenKey];
-  if(!t) return baseUrl;
-  return baseUrl + "?token=" + t;
+function withToken(u,k){
+  return u + "?token=" + IPTV_TOKENS[k];
 }
 function hexToB64(hex){
-  const bytes=new Uint8Array(hex.match(/.{1,2}/g).map(b=>parseInt(b,16)));
-  return btoa(String.fromCharCode(...bytes));
+  const b=new Uint8Array(hex.match(/.{1,2}/g).map(x=>parseInt(x,16)));
+  return btoa(String.fromCharCode(...b));
 }
 
-// ===== SAMPLE CHANNELS MO =====
-const channels = [
+const channels=[
 {
-  name:"3RsTV (HLS)",
-  logo:"https://i.imgur.com/50RyQA7.jpeg",
-  url:"https://live20.bozztv.com/giatvplayout7/giatv-210631/tracks-v1a1/mono.ts.m3u8"
-},
-{
-  name:"RPTV (Converge)",
-  logo:"https://ottepg8.comclark.com:8443/iptvepg/images/markurl/mark_1723133873954.png",
-  url: withToken("https://converse.nathcreqtives.com/1094/manifest.mpd","converge"),
+  name:"RPTV",
+  url:withToken("https://converse.nathcreqtives.com/1094/manifest.mpd","converge"),
   drm:true,
   keyId:"31363231383439313133323034313530",
   key:"78645370476a496d5756385231474332"
 },
 {
-  name:"Movies Now (DRM)",
-  logo:"https://i.imgur.com/3BCg3pS.png",
-  url:"https://times-ott-live.akamaized.net/moviesnow_wv_drm/index.mpd",
-  drm:true,
-  keyId:"40f019b86241d23ef075633fd7f1e927",
-  key:"058dec845bd340178a388edd104a015e"
-},
-{
-  name:"A2Z (Cignal)",
-  logo:"https://static.wikia.nocookie.net/russel/images/8/85/A2Z_Channel_11_without_Channel_11_3D_Logo_2020.png",
+  name:"A2Z",
   url:"https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/cg_a2z/default/index.mpd",
   drm:true,
   keyId:"f703e4c8ec9041eeb5028ab4248fa094",
   key:"c22f2162e176eee6273a5d0b68d19530"
 },
 {
-  name:"Yes FM Dagupan (Radio)",
-  logo:"https://i.ibb.co/yBqNhTZN/raryo.jpg",
+  name:"Yes FM",
   url:"https://yesfmdagupan.radioca.st/",
   type:"mp3"
-},
-{
-  name:"The Great Flood (MP4)",
-  logo:"https://i.imgur.com/50RyQA7.jpeg",
-  url:"https://videos.gia.tv/giatv/movies/playlist/210273/The_Great_Flood_2025_720p_NF_WEB_DL_x264_ESub_Hollymoviehd_2.mp4"
 }
 ];
 
-// ===== UI =====
-const list=document.getElementById('channels');
-channels.forEach(ch=>{
+const list=document.getElementById('list');
+channels.forEach(c=>{
   const d=document.createElement('div');
-  d.className='ch';
-  d.innerHTML=`<img src="${ch.logo}"><div>${ch.name}</div>`;
-  d.onclick=()=>play(ch);
+  d.innerText=c.name;
+  d.style.padding="10px";
+  d.style.cursor="pointer";
+  d.onclick=()=>play(c);
   list.appendChild(d);
 });
 
-// ===== PLAYER =====
-async function play(ch){
-  const container=document.getElementById('player');
-  container.innerHTML=""; // critical reset
+async function play(c){
+  const box=document.getElementById('player');
+  box.innerHTML="";
 
-  let media;
-
-  if(ch.type==="mp3"){
-    media=document.createElement('audio');
-    media.controls=true;
-    container.appendChild(media);
-    media.src=ch.url;
-    media.play();
+  if(c.type==="mp3"){
+    const a=document.createElement('audio');
+    a.controls=true;
+    a.src=c.url;
+    box.appendChild(a);
+    a.play();
     return;
   }
 
-  media=document.createElement('video');
-  media.controls=true;
-  media.autoplay=true;
-  container.appendChild(media);
+  const v=document.createElement('video');
+  v.controls=true;
+  v.autoplay=true;
+  box.appendChild(v);
 
-  if(ch.url.endsWith(".mp4")){
-    media.src=ch.url;
-    return;
-  }
+  const p=new shaka.Player(v);
 
-  if(ch.url.includes(".m3u8")){
-    const hls=new Hls();
-    hls.loadSource(ch.url);
-    hls.attachMedia(media);
-    return;
-  }
-
-  const player=new shaka.Player(media);
-
-  if(ch.drm){
-    player.configure({
-      drm:{clearKeys:{[hexToB64(ch.keyId)]:hexToB64(ch.key)}}
+  if(c.drm){
+    p.configure({
+      drm:{clearKeys:{[hexToB64(c.keyId)]:hexToB64(c.key)}}
     });
   }
 
-  await player.load(ch.url);
+  await p.load(c.url);
 }
 </script>
 
