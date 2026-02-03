@@ -1,142 +1,145 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>IPTV Player</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8"/>
+<title>IPTV Quick Test</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/shaka-player.compiled.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.9/shaka-player.compiled.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
 <style>
-body{margin:0;background:black;font-family:Arial}
-video{position:fixed;inset:0;width:100%;height:100%}
-#ui{position:fixed;bottom:0;width:100%;background:rgba(0,0,0,.75);padding:10px}
-#tabs{display:flex;gap:10px;margin-bottom:8px}
-.tab{padding:6px 14px;border-radius:10px;background:#333;color:#aaa;cursor:pointer}
-.tab.active{background:#0f9;color:black;font-weight:bold}
-#channels{display:flex;gap:12px;overflow-x:auto}
-.channel{min-width:220px;background:#111;padding:10px;border-radius:12px;cursor:pointer;display:flex;align-items:center}
-.channel img{width:48px;height:48px;margin-right:12px}
-.channel span{color:white;font-size:15px}
+body{margin:0;background:#111;color:#fff;font-family:Arial}
+#app{display:flex;height:100vh}
+#channels{width:320px;background:#1a1a1a;overflow:auto;padding:10px}
+.ch{display:flex;gap:10px;align-items:center;padding:8px;background:#222;margin-bottom:6px;border-radius:6px;cursor:pointer}
+.ch:hover{background:#333}
+.ch img{width:55px;height:55px;border-radius:6px;object-fit:cover}
+#player{flex:1;display:flex;justify-content:center;align-items:center;background:#000}
+video,audio{width:92%;max-height:92%}
 </style>
 </head>
-
 <body>
 
-<video id="video" controls autoplay></video>
-
-<div id="ui">
-  <div id="tabs">
-    <div class="tab active" data-cat="Mixed">Mixed</div>
-    <div class="tab" data-cat="HLS">HLS</div>
-    <div class="tab" data-cat="Radio">Radio</div>
-  </div>
+<div id="app">
   <div id="channels"></div>
+  <div id="player"></div>
 </div>
 
 <script>
-/* ================= CONFIG ================= */
-const CONFIG_URL =
-"https://elektriko44.github.io/iptv-config/cfg_7x9aQ_2026.json";
+// ===== TOKENS =====
+const IPTV_TOKENS = {
+  converge: "PASTE_TOKEN_MO_DITO"
+};
 
-let channels = [];
-let currentCat = "Mixed";
-
-const video = document.getElementById("video");
-let shakaP=null, hlsP=null;
-
-/* ================= LOAD CONFIG ================= */
-async function loadConfig(){
-  try{
-    const res = await fetch(CONFIG_URL,{cache:"no-store"});
-    const cfg = await res.json();
-
-    channels = (cfg.channels || []).map(c=>({
-      category: c.category || "Mixed", // 🔥 AUTO FIX
-      ...c
-    }));
-
-    console.log("Loaded channels:", channels.length);
-    render();
-
-  }catch(e){
-    alert("CONFIG LOAD FAILED");
-    console.error(e);
-  }
+// ===== HELPERS (galing sa working app.js) =====
+function withToken(baseUrl, tokenKey){
+  const t = IPTV_TOKENS[tokenKey];
+  if(!t) return baseUrl;
+  return baseUrl + "?token=" + t;
+}
+function hexToB64(hex){
+  const bytes=new Uint8Array(hex.match(/.{1,2}/g).map(b=>parseInt(b,16)));
+  return btoa(String.fromCharCode(...bytes));
 }
 
-/* ================= PLAYER ================= */
-async function play(ch){
-  if(shakaP){await shakaP.destroy();shakaP=null}
-  if(hlsP){hlsP.destroy();hlsP=null}
-
-  if(ch.url.includes(".m3u8")){
-    if(Hls.isSupported()){
-      hlsP=new Hls();
-      hlsP.loadSource(ch.url);
-      hlsP.attachMedia(video);
-      hlsP.on(Hls.Events.MANIFEST_PARSED,()=>video.play());
-    }else{
-      video.src=ch.url;video.play();
-    }
-    return;
-  }
-
-  shakaP=new shaka.Player(video);
-
-function play(ch){
-  if(ch.source === "gsat"){
-    // 🔥 SEND TO ANDROID
-    Android.playGSAT(JSON.stringify(ch));
-    return;
-  }
-
-  // existing HLS / clearkey logic stays
-} 
-
-  if(ch.drmType==="clearkey" && ch.keyId && ch.key){
-    shakaP.configure({
-      drm:{clearKeys:{[ch.keyId]:ch.key}}
-    });
-  }
-
-  await shakaP.load(ch.url);
-  video.play();
+// ===== SAMPLE CHANNELS MO =====
+const channels = [
+{
+  name:"3RsTV (HLS)",
+  logo:"https://i.imgur.com/50RyQA7.jpeg",
+  url:"https://live20.bozztv.com/giatvplayout7/giatv-210631/tracks-v1a1/mono.ts.m3u8"
+},
+{
+  name:"RPTV (Converge)",
+  logo:"https://ottepg8.comclark.com:8443/iptvepg/images/markurl/mark_1723133873954.png",
+  url: withToken("https://converse.nathcreqtives.com/1094/manifest.mpd","converge"),
+  drm:true,
+  keyId:"31363231383439313133323034313530",
+  key:"78645370476a496d5756385231474332"
+},
+{
+  name:"Movies Now (DRM)",
+  logo:"https://i.imgur.com/3BCg3pS.png",
+  url:"https://times-ott-live.akamaized.net/moviesnow_wv_drm/index.mpd",
+  drm:true,
+  keyId:"40f019b86241d23ef075633fd7f1e927",
+  key:"058dec845bd340178a388edd104a015e"
+},
+{
+  name:"A2Z (Cignal)",
+  logo:"https://static.wikia.nocookie.net/russel/images/8/85/A2Z_Channel_11_without_Channel_11_3D_Logo_2020.png",
+  url:"https://qp-pldt-live-bpk-02-prod.akamaized.net/bpk-tv/cg_a2z/default/index.mpd",
+  drm:true,
+  keyId:"f703e4c8ec9041eeb5028ab4248fa094",
+  key:"c22f2162e176eee6273a5d0b68d19530"
+},
+{
+  name:"Yes FM Dagupan (Radio)",
+  logo:"https://i.ibb.co/yBqNhTZN/raryo.jpg",
+  url:"https://yesfmdagupan.radioca.st/",
+  type:"mp3"
+},
+{
+  name:"The Great Flood (MP4)",
+  logo:"https://i.imgur.com/50RyQA7.jpeg",
+  url:"https://videos.gia.tv/giatv/movies/playlist/210273/The_Great_Flood_2025_720p_NF_WEB_DL_x264_ESub_Hollymoviehd_2.mp4"
 }
+];
 
-/* ================= RENDER ================= */
-const box=document.getElementById("channels");
-function render(){
-  box.innerHTML="";
-  channels
-    .filter(c=>c.category===currentCat)
-    .forEach(ch=>{
-      const d=document.createElement("div");
-      d.className="channel";
-      d.innerHTML=`
-        <img src="${ch.logo||''}">
-        <span>${ch.name}</span>
-      `;
-      d.onclick=()=>play(ch);
-      box.appendChild(d);
-    });
-}
-
-/* ================= TABS ================= */
-document.querySelectorAll(".tab").forEach(t=>{
-  t.onclick=()=>{
-    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
-    t.classList.add("active");
-    currentCat=t.dataset.cat;
-    render();
-  };
+// ===== UI =====
+const list=document.getElementById('channels');
+channels.forEach(ch=>{
+  const d=document.createElement('div');
+  d.className='ch';
+  d.innerHTML=`<img src="${ch.logo}"><div>${ch.name}</div>`;
+  d.onclick=()=>play(ch);
+  list.appendChild(d);
 });
 
-/* ================= START ================= */
-loadConfig();
+// ===== PLAYER =====
+async function play(ch){
+  const container=document.getElementById('player');
+  container.innerHTML=""; // critical reset
+
+  let media;
+
+  if(ch.type==="mp3"){
+    media=document.createElement('audio');
+    media.controls=true;
+    container.appendChild(media);
+    media.src=ch.url;
+    media.play();
+    return;
+  }
+
+  media=document.createElement('video');
+  media.controls=true;
+  media.autoplay=true;
+  container.appendChild(media);
+
+  if(ch.url.endsWith(".mp4")){
+    media.src=ch.url;
+    return;
+  }
+
+  if(ch.url.includes(".m3u8")){
+    const hls=new Hls();
+    hls.loadSource(ch.url);
+    hls.attachMedia(media);
+    return;
+  }
+
+  const player=new shaka.Player(media);
+
+  if(ch.drm){
+    player.configure({
+      drm:{clearKeys:{[hexToB64(ch.keyId)]:hexToB64(ch.key)}}
+    });
+  }
+
+  await player.load(ch.url);
+}
 </script>
 
 </body>
 </html>
-
